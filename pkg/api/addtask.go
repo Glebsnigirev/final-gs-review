@@ -29,23 +29,27 @@ func isValidRepeatFormat(repeat string) bool {
 func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 	var task db.Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		writeJson(w, map[string]string{"error": err.Error()})
+		w.WriteHeader(http.StatusBadRequest)
+		writeJson(w, map[string]string{"error": "Некорректный JSON"})
 		return
 	}
 
 	if task.Title == "" {
+		w.WriteHeader(http.StatusBadRequest)
 		writeJson(w, map[string]string{"error": "Не указан заголовок задачи"})
 		return
 	}
 
 	now := time.Now()
 	if err := checkDate(&task, now); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		writeJson(w, map[string]string{"error": err.Error()})
 		return
 	}
 
 	id, err := db.AddTask(&task)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		writeJson(w, map[string]string{"error": err.Error()})
 		return
 	}
@@ -86,7 +90,7 @@ func checkDate(task *db.Task, now time.Time) error {
 			} else {
 				next, err := NextDate(now, task.Date, task.Repeat)
 				if err != nil {
-					return fmt.Errorf("Неверное правило повторения: %v", err)
+					return fmt.Errorf("Неверное правило повторения: %w", err)
 				}
 				task.Date = next
 			}
